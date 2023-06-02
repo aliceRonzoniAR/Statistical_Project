@@ -5,6 +5,7 @@ setwd("~/Desktop/STATISTICAL PROJECT")
 ###############################
           ## LIBRARY ##
 library(corrplot)
+
 ###############################
 
 ##### OPEN FILE #####
@@ -23,6 +24,19 @@ colnames(wdbc) = c('id', 'diagnosis', 'radius_mean', 'texture_mean', 'perimeter_
 ##### CHECK FOR MISSING VALUES #####
 sum(is.na(wdbc))
 ####################################
+
+#### SUMMARY ####
+summary(wdbc)
+
+####################################
+
+#### DATA PROPORTION ####
+table(wdbc$diagnosis) #quanti B e quanti M 
+table(wdbc$diagnosis)/length(wdbc$diagnosis) #proporzione di B e M
+
+####################################
+
+
 
 ##### CREATE MATRIX FOR EACH SET OF CELL (MEAN, SE, WORST) AND DIVIDE IN BASE OF THE TYPE (M, B)#####
 ##### MEAN #####
@@ -227,7 +241,8 @@ rownames(cor_B)=c( 'radius', 'texture', 'perim', 'area',
                        'smoot', 'compact', 'conc', 'conc_pts', 'sym',
                        'fractal') #cambio nomi per leggibilita 
 #pairs(wdbc_mean_B, main = "Covariance Matrix of Benign")
-corrplot.mixed(cor_B, diag = 'n',
+{plot.new(); dev.off()}
+corrplot.mixed(cor_B,
                upper = 'square',
                lower = 'number',
                addgrid.col = 'black',
@@ -250,6 +265,7 @@ rownames(cor_M)=c( 'radius', 'texture', 'perim', 'area',
                    'smoot', 'compact', 'conc', 'conc_pts', 'sym',
                    'fractal') #cambio nomi per leggibilita 
 #pairs(wdbc_mean_M)
+{plot.new(); dev.off()}
 corrplot.mixed(cor_M, diag = 'n',
                upper = 'square',
                lower = 'number',
@@ -271,6 +287,7 @@ colnames(cor_BM) = c( 'radius', 'texture', 'perim', 'area',
 rownames(cor_BM)=c( 'radius', 'texture', 'perim', 'area', 
                    'smoot', 'compact', 'conc', 'conc_pts', 'sym',
                    'fractal') #cambio nomi per leggibilita 
+{plot.new(); dev.off()}
 corrplot.mixed(cor_BM, diag = 'n',
                upper = 'square',
                lower = 'number',
@@ -279,6 +296,25 @@ corrplot.mixed(cor_BM, diag = 'n',
 #pairs(wdbc_mean)
 
 ##### FINE COVARIANCE MATRIX #####
+
+##### B & M PLOT ####
+B <-wdbc$diagnosis =="B"
+radius<-wdbc$radius_mean
+symmetry<-wdbc$symmetry_mean
+plot(radius,symmetry,col=B+2) #scelgo due colonne poco  correlate 
+legend(24, 0.31, legend=c("Benign", "Malign"),
+       col=c("green","red"),pch=1, cex = 0.8,
+       title="Data types", text.font=4)
+#####################
+
 ################################################################################
-                    ##### FINE PLOT #####
+                          ##### FINE PLOT #####
 ################################################################################
+
+################################################################################
+                        ##### INIZIO MODELLI #####
+################################################################################
+
+#### DIVISION TRAINING-VALIDATION-TEST ####
+
+
