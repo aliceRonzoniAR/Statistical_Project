@@ -8,6 +8,7 @@ setwd("~/Documenti/Statistical_Learning/II Semestre/Progetto")
 library(corrplot)
 library(leaps)
 library(pROC)
+library(class)
 ###############################
 
 ##### OPEN FILE #####
@@ -29,14 +30,45 @@ sum(is.na(wdbc))
 ####################################
 
 #### SUMMARY ####
-# Toglierei il summary di ID visto che non serve a niente
-summary(wdbc)
+summary(wdbc[-1])
 ####################################
 
+attach(wdbc)
+
 #### DATA PROPORTION ####
-table(wdbc$diagnosis) #quanti B e quanti M 
-table(wdbc$diagnosis)/length(wdbc$diagnosis) #proporzione di B e M
+table(diagnosis) #quanti B e quanti M 
+table(diagnosis)/length(diagnosis) #proporzione di B e M
+slices<-c(table(diagnosis))
+lbls <- c("Benign", "Malign")
+pct <- round(slices/sum(slices)*100)
+lbls <- paste(lbls, pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie(slices,labels = lbls, col=c(3,2),
+    main="Percentage of Benign and Malign")
 #####################################
+
+##### B & M PLOT ####
+B <-diagnosis =="B"
+par(mfrow=c(2, 2))
+
+plot(radius_mean,symmetry_mean,col=B+2) #scelgo due colonne poco  correlate 
+#legend(24, 0.31, legend=c("Benign", "Malign"),
+#col=c(2,3),pch=1, cex = 0.8,
+#title="Data types", text.font=4)
+plot(radius_mean,perimeter_mean,col=B+2) #scelgo due colonne poco  correlate 
+#legend(24, 0.31, legend=c("Benign", "Malign"),
+#col=c(2,3),pch=1, cex = 0.8,
+#title="Data types", text.font=4)
+plot(radius_mean,fractal_dim_mean,col=B+2) #scelgo due colonne poco  correlate 
+#legend(24, 0.31, legend=c("Benign", "Malign"),
+#col=c(2,3),pch=1, cex = 0.8,
+#title="Data types", text.font=4)
+plot(radius_mean,concave_pts_mean,col=B+2) #scelgo due colonne poco  correlate 
+#legend(24, 0.31, legend=c("Benign", "Malign"),
+#col=c(2,3),pch=1, cex = 0.8,
+#title="Data types", text.font=4)
+par(mfrow=c(1, 1))
+#####################
 
 ##### CREATE MATRIX FOR EACH SET OF CELL (MEAN, SE, WORST) AND DIVIDE IN BASE OF THE TYPE (M, B)#####
 ##### MEAN #####
@@ -50,19 +82,6 @@ wdbc_mean_M <- wdbc_mean[wdbc[,'diagnosis']=="M",]
 wdbc_mean_B <- as.data.frame(wdbc_mean_B)
 wdbc_mean_M <- as.data.frame(wdbc_mean_M)
 wdbc_mean <- as.data.frame(wdbc_mean)
-
-##### CALCOLO LA PERCENTUALE DI B E M SU TUTTO IL DATASET #####
-dim_B <- dim(wdbc_mean_B)[1]
-dim_M <- dim(wdbc_mean_M)[1]
-
-# Pie Chart with Percentages
-slices <- c(dim_B, dim_M)
-lbls <- c("Benign", "Malign")
-pct <- round(slices/sum(slices)*100)
-lbls <- paste(lbls, pct) # add percents to labels
-lbls <- paste(lbls,"%",sep="") # ad % to labels
-pie(slices,labels = lbls, col=c("darkgreen", "red"),
-    main="Percentage of Benign and Malign")
 
 ###################################################
                 ##### PLOT #####
@@ -122,83 +141,83 @@ boxplot(wdbc_mean$fractal_dim_mean,
 ##### DENSITY #####
 
 # Density plot of RADIUS_MEAN of B e M
-plot(density(wdbc_mean_B$radius_mean), col = "darkgreen", main ="Density plot", xlab = "Radius mean", xlim = c(0, 35), ylim = c(0, 0.23))
-lines(density(wdbc_mean_M$radius_mean), col = "red")
+plot(density(wdbc_mean_B$radius_mean), col = 2, main ="Density plot", xlab = "Radius mean", xlim = c(0, 35), ylim = c(0, 0.23))
+lines(density(wdbc_mean_M$radius_mean), col = 3)
 lines(density(wdbc_mean$radius_mean), col = "lightblue")
 legend(23, 0.225,  legend=c("Benign", "Malign", "Mean"),
-       col=c("darkgreen","red", "lightblue"), lty=1, cex = 0.8,
+       col=c(2,3, "lightblue"), lty=1, cex = 0.8,
        title="Line types", text.font=4)
 
 # Density plot of TEXTURE_MEAN of B e M
-plot(density(wdbc_mean_M$texture_mean), col = "red", main ="Density plot", xlab = "Texture mean")
-lines(density(wdbc_mean_B$texture_mean), col = "darkgreen")
+plot(density(wdbc_mean_M$texture_mean), col = 3, main ="Density plot", xlab = "Texture mean")
+lines(density(wdbc_mean_B$texture_mean), col = 2)
 lines(density(wdbc_mean$texture_mean), col = "lightblue")
 legend(30, 0.12,  legend=c("Benign", "Malign", "Mean"),
-       col=c("darkgreen","red", "lightblue"), lty=1, cex = 0.8,
+       col=c(2,3, "lightblue"), lty=1, cex = 0.8,
        title="Line types", text.font=4)
 
 # Density plot of PERIMETER_MEAN of B e M
-plot(density(wdbc_mean_B$perimeter_mean), col = "darkgreen", main ="Density plot", xlab = "Perimeter mean", xlim = c(0, 220) )
-lines(density(wdbc_mean_M$perimeter_mean), col = "red")
+plot(density(wdbc_mean_B$perimeter_mean), col = 2, main ="Density plot", xlab = "Perimeter mean", xlim = c(0, 220) )
+lines(density(wdbc_mean_M$perimeter_mean), col = 3)
 lines(density(wdbc_mean$perimeter_mean), col = "lightblue")
 legend(145, 0.033,  legend=c("Benign", "Malign", "Mean"),
-       col=c("darkgreen","red", "lightblue"), lty=1, cex = 0.8,
+       col=c(2,3, "lightblue"), lty=1, cex = 0.8,
        title="Line types", text.font=4)
 
 # Density plot of AREA_MEAN of B e M
-plot(density(wdbc_mean_B$area_mean), col = "darkgreen", main ="Density plot", xlab = "Area mean", xlim = c(0, 3000))
-lines(density(wdbc_mean_M$area_mean), col = "red")
+plot(density(wdbc_mean_B$area_mean), col = 2, main ="Density plot", xlab = "Area mean", xlim = c(0, 3000))
+lines(density(wdbc_mean_M$area_mean), col = 3)
 lines(density(wdbc_mean$area_mean), col = "lightblue")
 legend(2000, 0.003,  legend=c("Benign", "Malign", "Mean"),
-       col=c("darkgreen","red", "lightblue"), lty=1, cex = 0.8,
+       col=c(2,3, "lightblue"), lty=1, cex = 0.8,
        title="Line types", text.font=4)
 
 # Density plot of SMOOTHNESS_MEAN of B e M
-plot(density(wdbc_mean_B$smoothness_mean), col = "darkgreen", main ="Density plot", xlab = "Smoothness mean")
-lines(density(wdbc_mean_M$smoothness_mean), col = "red")
+plot(density(wdbc_mean_B$smoothness_mean), col = 2, main ="Density plot", xlab = "Smoothness mean")
+lines(density(wdbc_mean_M$smoothness_mean), col = 3)
 lines(density(wdbc_mean$smoothness_mean), col = "lightblue")
 legend(0.13, 30,  legend=c("Benign", "Malign", "Mean"),
-       col=c("darkgreen","red", "lightblue"), lty=1, cex = 0.8,
+       col=c(2,3, "lightblue"), lty=1, cex = 0.8,
        title="Line types", text.font=4)
 
 # Density plot of COMPACTNESS_MEAN of B e M
-plot(density(wdbc_mean_B$compactness_mean), col = "darkgreen", main ="Density plot", xlab = "Compactness mean", xlim = c(0, 0.45))
-lines(density(wdbc_mean_M$compactness_mean), col = "red")
+plot(density(wdbc_mean_B$compactness_mean), col = 2, main ="Density plot", xlab = "Compactness mean", xlim = c(0, 0.45))
+lines(density(wdbc_mean_M$compactness_mean), col = 3)
 lines(density(wdbc_mean$compactness_mean), col = "lightblue")
 legend(0.3, 13,  legend=c("Benign", "Malign", "Mean"),
-       col=c("darkgreen","red", "lightblue"), lty=1, cex = 0.8,
+       col=c(2,3, "lightblue"), lty=1, cex = 0.8,
        title="Line types", text.font=4)
 
 # Density plot of CONCAVITY_MEAN of B e M
-plot(density(wdbc_mean_B$concavity_mean), col = "darkgreen", main ="Density plot", xlab = "Concavity mean", xlim = c(0, 0.5))
-lines(density(wdbc_mean_M$concavity_mean), col = "red")
+plot(density(wdbc_mean_B$concavity_mean), col = 2, main ="Density plot", xlab = "Concavity mean", xlim = c(0, 0.5))
+lines(density(wdbc_mean_M$concavity_mean), col = 3)
 lines(density(wdbc_mean$concavity_mean), col = "lightblue")
 legend(0.32, 15,  legend=c("Benign", "Malign", "Mean"),
-       col=c("darkgreen","red", "lightblue"), lty=1, cex = 0.8,
+       col=c(2,3, "lightblue"), lty=1, cex = 0.8,
        title="Line types", text.font=4)
 
 # Density plot of CONCAVE_MEAN of B e M
-plot(density(wdbc_mean_B$concave_pts_mean), col = "darkgreen", main ="Density plot", xlab = "Concave mean", xlim = c(0, 0.25))
-lines(density(wdbc_mean_M$concave_pts_mean), col = "red")
+plot(density(wdbc_mean_B$concave_pts_mean), col = 2, main ="Density plot", xlab = "Concave mean", xlim = c(0, 0.25))
+lines(density(wdbc_mean_M$concave_pts_mean), col = 3)
 lines(density(wdbc_mean$concave_pts_mean), col = "lightblue")
 legend(0.16, 30,  legend=c("Benign", "Malign", "Mean"),
-       col=c("darkgreen","red", "lightblue"), lty=1, cex = 0.8,
+       col=c(2,3, "lightblue"), lty=1, cex = 0.8,
        title="Line types", text.font=4)
 
 # Density plot of SYMMETRY_MEAN of B e M
-plot(density(wdbc_mean_B$symmetry_mean), col = "darkgreen", main ="Density plot", xlab = "Symmetry mean", xlim = c(0, 0.35))
-lines(density(wdbc_mean_M$symmetry_mean), col = "red")
+plot(density(wdbc_mean_B$symmetry_mean), col = 2, main ="Density plot", xlab = "Symmetry mean", xlim = c(0, 0.35))
+lines(density(wdbc_mean_M$symmetry_mean), col = 3)
 lines(density(wdbc_mean$symmetry_mean), col = "lightblue")
 legend(0.22, 17,  legend=c("Benign", "Malign", "Mean"),
-       col=c("darkgreen","red", "lightblue"), lty=1, cex = 0.8,
+       col=c(2,3, "lightblue"), lty=1, cex = 0.8,
        title="Line types", text.font=4)
 
 # Density plot of FRACTAL_MEAN of B e M
-plot(density(wdbc_mean_B$fractal_dim_mean), col = "darkgreen", main ="Density plot", xlab = "Fractal mean", xlim = c(0, 0.11))
-lines(density(wdbc_mean_M$fractal_dim_mean), col = "red")
+plot(density(wdbc_mean_B$fractal_dim_mean), col = 2, main ="Density plot", xlab = "Fractal mean", xlim = c(0, 0.11))
+lines(density(wdbc_mean_M$fractal_dim_mean), col = 3)
 lines(density(wdbc_mean$fractal_dim_mean), col = "lightblue")
 legend(0.074, 75,  legend=c("Benign", "Malign", "Mean"),
-       col=c("darkgreen","red", "lightblue"), lty=1, cex = 0.8,
+       col=c(2,3, "lightblue"), lty=1, cex = 0.8,
        title="Line types", text.font=4)
 
 ##### FINE DENSITY PLOT #####
@@ -301,20 +320,130 @@ corrplot.mixed(cor_BM, diag = 'n',
                     ##### MODELS #####
 ################################################################################
 
+#### DIVISION TRAINING-VALIDATION-TEST ####
+set.seed(161)
+nor <-function(x) { (x -min(x))/(max(x)-min(x))   } #per normalizzare i dati, non so se serve
+wdbc_mean_norm <- as.data.frame(lapply(wdbc_mean, nor))
+sample <- sample(1:569, size=398, replace= FALSE)
+# Dati non normalizzati
+wdbc_train<- wdbc_mean[sample,] #trining set
+wdbc_test<- wdbc_mean[-sample,] #test set
+# Dati normalizzati
+wdbc_train_norm <- wdbc_mean_norm[sample,] #trining set
+wdbc_test_norm<- wdbc_mean_norm[-sample,] #test set
+
+diagnosis<-wdbc$diagnosis[sample]
+diagnosis
+
+############# K-NN ############# #prova 1 e 3 uguali errori, il 2 fa cagare
+kmax<-50 #cerco il K per K-nn che mi fornisce l'errore piú piccolo
+err<-rep(0,kmax)
+for (l in 1:kmax){
+  knn_predictor <- knn(wdbc_train_norm, wdbc_test_norm, wdbc$diagnosis[sample], k=l)
+  cm<-table(knn_predictor,wdbc$diagnosis[-sample])
+  err[l]<-mean(knn_predictor!=wdbc$diagnosis[-sample])
+}
+k<-which.min(err)
+k
+#faccio l'analisi con il k trovato
+knn_predictor <- knn(wdbc_train_norm, wdbc_test_norm, wdbc$diagnosis[sample], k)
+err_k<-mean(knn_predictor!=wdbc$diagnosis[-sample])
+err_k
+cm<-table(knn_predictor,wdbc$diagnosis[-sample])
+cm
+
+##### B & M PLOT ####
+BB <-knn_predictor =="B"
+plot(radius_mean[-sample],symmetry_mean[-sample],col=BB+2) #scelgo due colonne poco  correlate 
+legend(20, 0.30, legend=c("Benign", "Malign"),
+       col=c(2,3),pch=1, cex = 0.8,
+       title="Data types", text.font=4)
+#dati veramente unbalanced 
+#####################
+#prova 2
+
+wdbc_mean_norm_2<-wdbc_mean_norm[-c(3,4,5,6,7,9,10)]
+train <- sample(1:569, size=398, replace= FALSE)
+wdbc_train <- wdbc_mean_norm_2[train,] #trining set
+wdbc_test<- wdbc_mean_norm_2[-train,] #test set
+diagnosis<-wdbc$diagnosis[train]
+diagnosis
+############# K-NN #############
+kmax<-50 #cerco il K per K-nn che mi fornisce l'errore piú piccolo
+err<-rep(0,kmax)
+for (l in 1:kmax){
+  knn_predictor <- knn(wdbc_train, wdbc_test, wdbc$diagnosis[train], k=l)
+  cm<-table(knn_predictor,wdbc$diagnosis[-train])
+  err[l]<-mean(knn_predictor!=wdbc$diagnosis[-train])
+}
+k<-which.min(err)
+#faccio l'analisi con il k trovato
+knn_predictor <- knn(wdbc_train, wdbc_test, wdbc$diagnosis[train], k)
+err_k<-mean(knn_predictor!=wdbc$diagnosis[-train])
+err_k
+cm<-table(knn_predictor,wdbc$diagnosis[-train])
+cm
+
+##### B & M PLOT ####
+BB <-knn_predictor =="B"
+plot(radius_mean[-train],symmetry_mean[-train],col=BB+2) #scelgo due colonne poco  correlate 
+legend(20, 0.30, legend=c("Benign", "Malign"),
+       col=c(2,3),pch=1, cex = 0.8,
+       title="Data types", text.font=4)
+#dati veramente unbalanced 
+################################
+#prova 3
+
+wdbc_mean_norm_3<-wdbc_mean_norm[-c(3,4)]
+train <- sample(1:569, size=398, replace= FALSE)
+wdbc_train <- wdbc_mean_norm_3[train,] #trining set
+wdbc_test<- wdbc_mean_norm_3[-train,] #test set
+diagnosis<-wdbc$diagnosis[train]
+diagnosis
+############# K-NN #############
+kmax<-50 #cerco il K per K-nn che mi fornisce l'errore piú piccolo
+err<-rep(0,kmax)
+for (l in 1:kmax){
+  knn_predictor <- knn(wdbc_train, wdbc_test, wdbc$diagnosis[train], k=l)
+  cm<-table(knn_predictor,wdbc$diagnosis[-train])
+  err[l]<-mean(knn_predictor!=wdbc$diagnosis[-train])
+}
+k<-which.min(err)
+#faccio l'analisi con il k trovato
+knn_predictor <- knn(wdbc_train, wdbc_test, wdbc$diagnosis[train], k)
+err_k<-mean(knn_predictor!=wdbc$diagnosis[-train])
+err_k
+cm<-table(knn_predictor,wdbc$diagnosis[-train])
+cm
+
+##### B & M PLOT ####
+BB <-knn_predictor =="B"
+plot(radius_mean[-train],symmetry_mean[-train],col=BB+2) #scelgo due colonne poco  correlate 
+legend(20, 0.30, legend=c("Benign", "Malign"),
+       col=c(2,3),pch=1, cex = 0.8,
+       title="Data types", text.font=4)
+#dati veramente unbalanced
+
 ## Logistic Regression for Classification
 
 # Creo il dataset in cui fare le previsioni
-wdbc_mean_ds <- wdbc[,2:12]
+#wdbc_mean_ds <- wdbc[,2:12]
+
+# set.seed(123)
+wdbc_mean_ds <- cbind(wdbc$diagnosis, wdbc_mean) # adesso diagnosis si chiama wdbc$diagnosis
+colnames(wdbc_mean_ds) <- c("diagnosis", 'radius_mean', 'texture_mean', 'perimeter_mean', 'area_mean', 
+                            'smoothness_mean', 'compactness_mean', 'concavity_mean', 'concave_pts_mean', 'symmetry_mean',
+                            'fractal_dim_mean')
 
 # Change diagnosis values "B" -> 1, "M" -> 0
 wdbc_mean_ds$diagnosis <- ifelse(wdbc_mean_ds$diagnosis == "B", 1, 0)
 attach(wdbc_mean_ds)
 
 # Divido il dataset in Train e Test
-set.seed(123)
-sample <- sample(c(T, F), nrow(wdbc_mean_ds), replace =TRUE, prob = c(0.8, 0.2))
-train <- wdbc_mean_ds[sample, ] 
-test <- wdbc_mean_ds[!sample, ] 
+
+#sample <- sample(c(T, F), nrow(wdbc_mean_ds), replace =TRUE, prob = c(0.8, 0.2))
+train <- wdbc_mean_ds[sample, ]
+test <- wdbc_mean_ds[-sample, ]
 
 # Training phase on all data using all columns
 lr_model <- glm(diagnosis ~ radius_mean + texture_mean + perimeter_mean + area_mean + smoothness_mean + compactness_mean +
@@ -337,11 +466,11 @@ CM <- addmargins(CM, margin = c(1, 2))
 CM
 
 # Calcolo FPR = False Positive Rate
-fpr_1 <- 5/44
+fpr_1 <- 4/59
 fpr_1
 
 # Calcolo TNR = True Negative Rate
-tnr_1 <- 39/43
+tnr_1 <- 55/59
 tnr_1
 
 # Plotto ROC curve per vedere come procede
@@ -416,12 +545,12 @@ plot(roc.out3, legacy.axes=TRUE)
 plot(roc.out3,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
 
 ## Plot all three ROC-curve
-plot(roc.out1, col = "blue")
-lines(roc.out2, col = "red")
-lines(roc.out3, col = "green")
+plot(roc.out1, col = 4)
+lines(roc.out2, col = 3)
+lines(roc.out3, col = 2)
 
 # Add legend
-legend("bottomright", legend = c("AUC_1 = 0.977", "AUC_2 = 0.982", "AUC_3 = 0.987"), col = c("blue", "red", "green"), lty = 1)
+legend("bottomright", legend = c("AUC_1 = 0.977", "AUC_2 = 0.982", "AUC_3 = 0.987"), col = c(4, 3, 2), lty = 1)
 
 ## Confronto delle varie Confusion Matrix
 
