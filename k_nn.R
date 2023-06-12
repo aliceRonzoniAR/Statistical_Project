@@ -1,6 +1,6 @@
 #### SET WORKING DIRECTORY #####
-# setwd("~/Desktop/STATISTICAL PROJECT")
-setwd("~/Documenti/Statistical_Learning/II Semestre/Progetto")
+setwd("~/Desktop/STATISTICAL PROJECT/ file divisi")
+#setwd("~/Documenti/Statistical_Learning/II Semestre/Progetto")
 
 ###############################
 ## LIBRARY ##
@@ -9,12 +9,11 @@ library(leaps)
 library(pROC)
 library(class)
 library(MASS)
-library(car)
 ###############################
 
 ##### OPEN FILE #####
-#wdbc <- read.csv("wdbc.data",header=FALSE)
-wdbc <- read.csv("./Dati/Dataset_2/wdbc.data",header=FALSE)
+wdbc <- read.csv("wdbc.data",header=FALSE)
+#wdbc <- read.csv("./Dati/Dataset_2/wdbc.data",header=FALSE)
 
 #####################
 
@@ -80,8 +79,28 @@ legend(20, 0.30, legend=c("Benign", "Malign"),
        title = "Data types", text.font=4)
 #####################
 
-## Calcolo i valori di FPR, TPR, PPR, NPR per ogni prova
-FPR1 <- 4/43
-TPR1 <- 68/71
-PPR1 <- 68/72
-NPR1 <- 39/42
+# Prova 2
+# Faccio lo stesso bel modello di logistic regression su k-nn per vedere se migliora/peggiora la situa
+
+wdbc_train_lr <- wdbc_train[-c(25,4,2,14,15,21,24,9,27,19,31,23,7,22,17)]
+wdbc_test_lr <- wdbc_test[-c(25,4,2,14,15,21,24,9,27,19,31,23,7,22,17)]
+
+kmax <- 50 #cerco il K per K-nn che mi fornisce l'errore piú piccolo
+err_lr <- rep(0,kmax)
+for (l in 1:kmax){
+  knn_predictor_lr <- knn(wdbc_train_lr, wdbc_test_lr, wdbc$diagnosis[sample], k=l)
+  err_lr[l] <- mean(knn_predictor_lr != wdbc$diagnosis[-sample])
+}
+k <- which.min(err_lr)
+k
+
+#faccio l'analisi con il k trovato
+knn_predictor_lr <- knn(wdbc_train_lr, wdbc_test_lr, wdbc$diagnosis[sample], k)
+err_k_lr <- mean(knn_predictor_lr != wdbc$diagnosis[-sample])
+err_k_lr
+
+# Confusion Matrix
+CM_lr <- table(knn_predictor_lr, wdbc$diagnosis[-sample])
+CM_lr <- addmargins(CM_lr, margin = c(1, 2))
+CM_lr
+
