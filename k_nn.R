@@ -9,6 +9,7 @@ library(leaps)
 library(pROC)
 library(class)
 library(MASS)
+library(car)
 ###############################
 
 ##### OPEN FILE #####
@@ -79,67 +80,8 @@ legend(20, 0.30, legend=c("Benign", "Malign"),
        title = "Data types", text.font=4)
 #####################
 
-# Prova 2
-# Faccio lo stesso bel modello di logistic regression su k-nn per vedere se migliora/peggiora la situa
-wdbc_train_lr <- wdbc_train[-c(23, 15, 14, 5, 4, 25, 22, 24, 9, 13, 11, 26, 19, 28, 6, 10, 27, 17, 18, 20)]
-wdbc_test_lr <- wdbc_test[-c(23, 15, 14, 5, 4, 25, 22, 24, 9, 13, 11, 26, 19, 28, 6, 10, 27, 17, 18, 20)]
-
-kmax <- 50 #cerco il K per K-nn che mi fornisce l'errore piú piccolo
-err_lr <- rep(0,kmax)
-for (l in 1:kmax){
-  knn_predictor_lr <- knn(wdbc_train_lr, wdbc_test_lr, wdbc$diagnosis[sample], k=l)
-  err_lr[l] <- mean(knn_predictor_lr != wdbc$diagnosis[-sample])
-}
-k <- which.min(err_lr)
-k
-
-#faccio l'analisi con il k trovato
-knn_predictor_lr <- knn(wdbc_train_lr, wdbc_test_lr, wdbc$diagnosis[sample], k)
-err_k_lr <- mean(knn_predictor_lr != wdbc$diagnosis[-sample])
-err_k_lr
-
-# Confusion Matrix
-CM_lr <- table(knn_predictor_lr, wdbc$diagnosis[-sample])
-CM_lr <- addmargins(CM_lr, margin = c(1, 2))
-CM_lr
-
-# Prova 3
-# Faccio lo stesso bel modello di logistic regression (la prima versione, confusion matrix) su k-nn per vedere se migliora/peggiora la situa
-wdbc_train_lr <- wdbc_train[-c(23, 15, 14, 5, 4, 25, 22, 24, 9)]
-wdbc_test_lr <- wdbc_test[-c(23, 15, 14, 5, 4, 25, 22, 24, 9)]
-
-kmax <- 50 #cerco il K per K-nn che mi fornisce l'errore piú piccolo
-err_lr <- rep(0,kmax)
-for (l in 1:kmax){
-  knn_predictor_lr <- knn(wdbc_train_lr, wdbc_test_lr, wdbc$diagnosis[sample], k=l)
-  err_lr[l] <- mean(knn_predictor_lr != wdbc$diagnosis[-sample])
-}
-k <- which.min(err_lr)
-k
-
-#faccio l'analisi con il k trovato
-knn_predictor_lr <- knn(wdbc_train_lr, wdbc_test_lr, wdbc$diagnosis[sample], k)
-err_k_lr <- mean(knn_predictor_lr != wdbc$diagnosis[-sample])
-err_k_lr
-
-# Confusion Matrix
-CM_lr <- table(knn_predictor_lr, wdbc$diagnosis[-sample])
-CM_lr <- addmargins(CM_lr, margin = c(1, 2))
-CM_lr
-
-
 ## Calcolo i valori di FPR, TPR, PPR, NPR per ogni prova
 FPR1 <- 4/43
 TPR1 <- 68/71
 PPR1 <- 68/72
 NPR1 <- 39/42
-
-FPR2 <- 10/43
-TPR2 <- 68/71
-PPR2 <- 68/78
-NPR2 <- 33/36
-
-FPR3 <- 10/43
-TPR3 <- 70/71
-PPR3 <- 70/80
-NPR3 <- 33/34
