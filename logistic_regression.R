@@ -1,5 +1,5 @@
 #### SET WORKING DIRECTORY #####
-setwd("~/Desktop/STATISTICAL PROJECT/ file divisi")
+setwd("~/Desktop/STATISTICAL PROJECT/file divisi")
 #setwd("~/Documenti/Statistical_Learning/II Semestre/Progetto")
 ################################
 
@@ -11,6 +11,7 @@ library(pROC)
 library(class)
 library(MASS)
 library(car)
+library(ggplot2)
 ###############################
 
 ##### OPEN FILE #####
@@ -225,7 +226,6 @@ summary(lr_model_23)
 vif(lr_model_23)
 
 
-
 ####################
 #vediamo il test e la confusion Matrix with different tresholds
 ########### t=0.5
@@ -239,12 +239,61 @@ CM <- addmargins(CM, margin = c(1, 2))
 CM
 err<-mean(logistic_predictions!=wdbc_test$diagnosis)
 err
-
+####################
 # ROC Curve
 roc.out23 <- roc(wdbc_test$diagnosis, predictions, levels=c("0", "1"))
 plot(roc.out23, legacy.axes = TRUE)
 plot(roc.out23, print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
 ####################
+
+######################## GRAFICO LOGISTIC ####################################
+
+#logistic curve con dati nella curva
+predicted_data<- data.frame(predicted = predictions, BM = wdbc_test$diagnosis)
+predicted_data<- predicted_data[order(predicted_data$predicted, decreasing = FALSE),]
+predicted_data$rank<-  1:nrow(predicted_data)
+
+a<- ggplot(data = predicted_data, aes(x = rank, y = predicted)) +
+  geom_point(aes(color = as.factor(BM)), alpha = 1, shape = 1, stroke = 1) +
+  xlab("Index")+ylab("Predicted probability")+
+  ggtitle("Estimated Logistic Curve - Simple GLM")
+plot(a)
+
+
+########################################
+
+#logistic curve con linea a separare i dati 
+plot(wdbc_test$texture_mean, wdbc_test$diagnosis, pch=20)
+
+# function to compute the inverse of the logit
+inv.logit <- function(beta0, beta1,beta2,beta3,beta4,beta5,beta6,beta7,beta8, x1,x2,x3,x4,x5,x6,x7,x8) {
+  y <- exp(beta0+beta1*(x1)+beta2*(x2)+beta3*(x3)+beta4*(x4)+beta5*(x5)+beta6*(x6)+beta7*(x7)+beta8*(x8))
+  return(y/(1+y))
+}
+x1 <- seq(9, 40, length=100)#texture_mean
+x2<- seq(140, 2500, length=100) # area_mean
+x3 <- seq(0, 0.5, length=100) # concavity_mean
+x4 <- seq(0.04, 0.1, length=100)#fractal_dim_mean
+x5 <- seq(0.1, 2.9, length=100)#radius_SE
+x6 <- seq(0.007,0.08, length=100)# symmetry_SE 
+x7 <- seq(0.07, 0.3, length=100)# smoothness_worst 
+x8 <- seq(0.1, 0.7, length=100)#  symmetry_worst
+beta.hat <- coefficients(lr_model_23)
+beta0.hat <- beta.hat[1]
+beta1.hat <- beta.hat[2]
+beta2.hat <- beta.hat[3]
+beta3.hat <- beta.hat[4]
+beta4.hat <- beta.hat[5]
+beta5.hat <- beta.hat[6]
+beta6.hat <- beta.hat[7]
+beta7.hat <- beta.hat[8]
+beta8.hat <- beta.hat[9]
+y <- inv.logit(beta0.hat, beta1.hat, beta2.hat, beta3.hat,beta4.hat,beta5.hat,beta6.hat,beta7.hat,beta8.hat, x1,x2,x3,x4,x5,x6,x7,x8)
+lines(x, y, col="blue", lwd=1.5)
+############################################################
+
+
+
 
 
 ############ t=0.4
@@ -284,3 +333,4 @@ roc.out23 <- roc(wdbc_test$diagnosis, predictions, levels=c("0", "1"))
 plot(roc.out23, legacy.axes = TRUE)
 plot(roc.out23, print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
 ####################
+
