@@ -1,6 +1,6 @@
 #### SET WORKING DIRECTORY #####
-#setwd("~/Desktop/STATISTICAL PROJECT/ file divisi")
-setwd("~/Documenti/Statistical_Learning/II Semestre/Progetto")
+setwd("~/Desktop/STATISTICAL PROJECT/file divisi")
+#setwd("~/Documenti/Statistical_Learning/II Semestre/Progetto")
 
 ###############################
 ## LIBRARY ##
@@ -11,11 +11,13 @@ library(class)
 library(MASS)
 library(car)
 library(tidyverse)
+library(ggplot2)
+library(klaR)
 ###############################
 
 ##### OPEN FILE #####
-#wdbc <- read.csv("wdbc.data",header=FALSE)
-wdbc <- read.csv("./Dati/Dataset_2/wdbc.data",header=FALSE)
+wdbc <- read.csv("wdbc.data",header=FALSE)
+#wdbc <- read.csv("./Dati/Dataset_2/wdbc.data",header=FALSE)
 
 #####################
 
@@ -91,4 +93,6 @@ qda_class_0 <- qda_pred_0$class
 table(qda_class_0,wdbc_test$diagnosis)
 err_0<-mean(qda_class_0!=wdbc_test$diagnosis)
 err_0
-#ggplot(as.data.frame(qda_pred_0), aes(x=LD1, y=0,col=wdbc_test$diagnosis )) + geom_point(alpha=0.5) #da capire il significato ihihihih
+drawparti(as.factor(wdbc_df$diagnosis)   ,wdbc_df$area_mean ,wdbc_df$concavity_mean ,method="qda", xlab = "area_mean", 
+          ylab = "concavity_mean",imageplot = TRUE,col.wrong = "blue" , image.colors = c("lightgreen","indianred2"),xlim=c(0,2500),ylim=c(0,55))
+
