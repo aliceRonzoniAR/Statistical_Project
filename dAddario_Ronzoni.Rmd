@@ -1,0 +1,1289 @@
+---
+title: "Statistical Project A.A. 2022/2023"
+author: "Alessia d'Addario, Alice Ronzoni"
+font: 12pt
+output:
+  pdf_document:
+    toc: true
+  html_document:
+    toc: true
+    number_sections: true
+---
+\newpage
+# Problem presentation
+
+In this project we present a binary classification problem based on the  “Wisconsin Diagnostic Breast Cancer (WDBC)”.\
+Given a series of observations made on a group of patients and a series of characteristic we were interested in classifying if a given tumor is benign or malignant based on the specific characteristic’s values of every patient’s diagnosis. Our aim was to identify the informative features and use them in several models to study how well those models could classify the two types of Tumor.
+
+# Dataset presentation
+
+The dataset used was created by Dr. William H. Wolberg (General Surgery Dept., University of Wisconsin), Olvi L. Mangasarian (Computer Sciences Dept. University of Wisconsin) and W. Nick Street, (Computer Sciences Dept., University of Wisconsin), who also donated it in 1995. It can be found at the following web page: [uci.edu](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic).\
+The data are obtained from a digitized image of a fine needle aspirate (FNA) of a breast mass. They describe characteristics of the cell nuclei present in the image by three different parameters for every features:
+
+-   Mean
+-   Standard Error
+-   Worst
+
+This Dataset contains 569 Instances with 32 features, two of them are informative
+
+1.    ID number
+2.    Diagnosis (M = malignant, B = benign)
+
+and the remained (3-32) are real-valued features computed for each cell nucleus divided into the previous three parameters (Mean, SE, Worst): 
+
+-   radius (mean of distances from center to points on the perimeter)
+-   texture (standard deviation of gray-scale values)
+-   perimeter
+-   area
+-   smoothness (local variation in radius lengths)
+-   compactness ($\text{perimeter}^2$/(area  - 1.0) )
+-   concavity (severity of concave portions of the contour)
+-   concave points (number of concave portions of the contour)
+-   symmetry
+-   fractal dimension ("coastline approximation" - 1)
+
+# Clean and Filter Data
+As first step we checked for some missing values:
+```{r include=FALSE}
+#wdbc <- read.csv("wdbc.data",header=FALSE)
+wdbc <- read.csv("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/Dati/Dataset_2/wdbc.data",header=FALSE)
+colnames(wdbc) = c('id', 'diagnosis', 'radius_mean', 'texture_mean', 'perimeter_mean',
+                   'area_mean', 'smoothness_mean', 'compactness_mean', 'concavity_mean',
+                   'concave_pts_mean', 'symmetry_mean', 'fractal_dim_mean','radius_SE',
+                   'texture_SE', 'perimeter_SE', 'area_SE', 'smoothness_SE',
+                   'compactness_SE', 'concavity_SE', 'concave_pts_SE', 'symmetry_SE',
+                   'fractal_dim_SE','radius_worst', 'texture_worst', 'perimeter_worst',
+                   'area_worst', 'smoothness_worst', 'compactness_worst', 'concavity_worst',
+                   'concave_pts_worst', 'symmetry_worst', 'fractal_dim_worst')
+wdbc_df <- as.data.frame(wdbc)
+```
+
+```{r libraries, include=FALSE}
+library(corrplot)
+library(leaps)
+library(pROC)
+library(class)
+library(MASS)
+library(car)
+library(caret)
+library(e1071)
+library(caTools)
+library(tidyverse)
+```
+
+```{r}
+sum(is.na(wdbc))
+```
+Since this is not the case, we could proceed with the analysis of the Dataset.\
+To make sure that we didn’t have some redundant rows, we checked for repeating ID in the ID column.
+
+```{r}
+sum(duplicated(wdbc$id))
+```
+There were no multiple observations for the same patient.\ 
+Given that, we decided to remove the ID column from the entire dataset as it was not helpful in our analysis.
+
+```{r include=FALSE}
+wdbc_df <- wdbc[-1]
+```
+
+As further manipulation, we used the *as.factor()* function to change the target column into factors and check all the levels.
+
+```{r 0-1}
+wdbc_df$diagnosis<-as.factor(wdbc_df$diagnosis)
+levels(wdbc_df$diagnosis)
+```
+We also renamed the columns due to legibility problem:
+```{r rename columns}
+colnames(wdbc) = c('id', 'diagnosis', 'radius_mean', 'texture_mean', 'perimeter_mean',
+                   'area_mean', 'smoothness_mean', 'compactness_mean', 'concavity_mean',
+                   'concave_pts_mean', 'symmetry_mean', 'fractal_dim_mean','radius_SE',
+                   'texture_SE', 'perimeter_SE', 'area_SE', 'smoothness_SE',
+                   'compactness_SE', 'concavity_SE', 'concave_pts_SE', 'symmetry_SE',
+                   'fractal_dim_SE','radius_worst', 'texture_worst','perimeter_worst',
+                   'area_worst', 'smoothness_worst', 'compactness_worst', 'concavity_worst',
+                   'concave_pts_worst', 'symmetry_worst', 'fractal_dim_worst')
+```
+
+# Data exploration
+In this section we want to have a graphical representation of how data are distributed.\
+To start, we have a look at the summary to have a better idea of how data are distributed.
+```{r summary}
+summary(wdbc_df)
+```
+To have a graphical representation, we decided to plot them starting from the column diagnosis.
+```{r percentage}
+table(wdbc_df$diagnosis) # Numbers of 0 and 1 (M, B)
+table(wdbc_df$diagnosis)/length(wdbc_df$diagnosis) # proportion of 0 and 1 (M, B)
+```
+We can see that there are 357 (62,7%) Benign cases and 212 (37,2%) Malign cases.\
+To have a more clear understanding, we plotted them into a Pie Chart:
+
+```{r pie chart, echo=FALSE, out.width="75%", fig.align = 'center'}
+slices<-c(table(wdbc$diagnosis))
+lbls <- c("Benign", "Malign")
+pct <- round(slices/sum(slices)*100)
+lbls <- paste(lbls, pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie(slices,labels = lbls, col=c(3,2),
+    main="Percentage of Benign and Malign")
+```
+
+## Data Representation
+We now want to see the distribution of our data looking at the boxplot and at the density plot.\
+In order to have a complete display, we decided to have 10 different frame, one for each feature and to show the three different parameters adjusted in their specific scale. Here, for simplicity, we report just two of them.
+```{r echo=FALSE, out.height="75%", out.width="75%"}
+par(mfrow=c(1, 3))
+boxplot( wdbc_df$area_mean,
+        xlab = "area_mean",
+        main = "")
+boxplot( wdbc_df$area_SE,
+        xlab = "area_SE",
+        main = "Area")
+boxplot( wdbc_df$area_worst,
+        xlab = "area_worst",
+        main = "")
+```
+
+```{r echo=FALSE, out.height="75%", out.width="75%"}
+par(mfrow=c(1, 3))
+boxplot( wdbc_df$texture_mean,
+        xlab = "texture_mean",
+        main = "")
+boxplot( wdbc_df$texture_SE,
+        xlab = "texture_SE",
+        main = "texture")
+boxplot( wdbc_df$texture_worst,
+        xlab = "texture_worst",
+        main = "")
+par(mfrow=c(1, 1))
+```
+
+It is evident that our data are really skewed. At the same time we have to remember that these data are the result of measurements done on cells that can have different shapes and sizes. What’s more, the dataset doesn’t provide all the measurements, but only the mean, the standard error and the worst value.\
+Before further analysis we needed to check the normality of our feature, which is a needed assumption in most of the classification model.
+To do so, we first plotted the density of our features.\
+Here we report a small sample of them:
+```{r, out.height="75%", out.width="75%"}
+wdbc_as_matrix <- as.matrix(wdbc[-c(1, 2)])
+wdbc_as_matrix <- as.matrix(wdbc_as_matrix)
+
+wdbc_B <- wdbc_as_matrix[wdbc[,'diagnosis']=="B",]
+wdbc_M <- wdbc_as_matrix[wdbc[,'diagnosis']=="M",]
+wdbc_B <- as.data.frame(wdbc_B)
+wdbc_M <- as.data.frame(wdbc_M)
+```
+```{r,eval=FALSE}
+par(mfrow=c(3, 1))
+plot(density(wdbc_B$radius_mean), col = 2, main ="Density plot", xlab = "radius mean" ,
+     xlim=c(0,30))
+lines(density(wdbc_M$radius_mean), col = 3)
+lines(density(wdbc$radius_mean), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$radius_SE), col = 2, main ="Density plot", 
+     xlab = "radius SE",xlim=c(0,1.5))
+lines(density(wdbc_M$radius_SE), col = 3)
+lines(density(wdbc$radius_SE), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+plot(density(wdbc_B$radius_worst), col = 2, main ="Density plot", xlab = "radius worst",
+     xlim=c(0,40))
+lines(density(wdbc_M$radius_worst), col = 3)
+lines(density(wdbc$radius_worst), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+```
+
+```{r echo=FALSE, out.width="90%"}
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/density_radius_iniziali.png")
+#knitr::include_graphics("density_radius_iniziali.png")
+```
+
+```{r,eval=FALSE}
+# Density plot of concave_pts
+plot(density(wdbc_B$concave_pts_mean), col = 2, main ="Density plot", 
+     xlab = "concave_pts mean", ylim = c(0, 0.12))
+lines(density(wdbc_M$concave_pts_mean), col = 3)
+lines(density(wdbc$concave_pts_mean), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+plot(density(wdbc_B$concave_pts_SE), col = 2, main ="Density plot", 
+     xlab = "concave_pts SE", ylim = c(0, 1.2))
+lines(density(wdbc_M$concave_pts_SE), col = 3)
+lines(density(wdbc$concave_pts_SE), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+plot(density(wdbc_B$concave_pts_worst), col = 2, main ="Density plot", 
+     xlab = "concave_pts worst", ylim = c(0, 0.12))
+lines(density(wdbc_M$concave_pts_worst), col = 3)
+lines(density(wdbc$concave_pts_worst), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"),
+       col = c("green", "red","blue"), lwd = 1)
+par(mfrow=c(1, 1))
+```
+
+```{r echo=FALSE, out.width="90%"}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/density_concave_iniziali.png")
+#knitr::include_graphics("density_concave_iniziali.png")
+
+```
+
+The plot suggest a bimodal tendency for what concerns the *radius_mean* and the *radius_worst* and some irregularities in the shape of the *concave_pts* plots.\
+Those observation suggest that they may not be normal distributed.\
+To assess this hypothesis we looked at the respective qqplot:
+```{r eval=FALSE}
+
+par(mfrow=c(3, 1))
+### qqplot Radius
+qqnorm(wdbc$radius_mean,main="Q_Q plt Radius_mean")
+qqline(wdbc$radius_mean, col="blue")
+qqnorm(wdbc$radius_SE,main="Q_Q plt Radius_SE")
+qqline(wdbc$radius_SE, col="blue")
+qqnorm(wdbc$radius_worst,main="Q_Q plt Radius_worst")
+qqline(wdbc$radius_worst, col="blue")
+```
+
+```{r echo=FALSE, out.width="90%"}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/qq_radius_iniziali.png")
+#knitr::include_graphics("qq_radius_iniziali.png")
+```
+```{r eval=FALSE}
+### qqplot concave_pts
+qqnorm(wdbc$concave_pts_mean,main="Q_Q plt concave_pts_mean")
+qqline(wdbc$concave_pts_mean, col="blue")
+qqnorm(wdbc$concave_pts_SE,main="Q_Q plt concave_pts_SE")
+qqline(wdbc$concave_pts_SE, col="blue")
+qqnorm(wdbc$concave_pts_worst,main="Q_Q plt concave_pts_worst")
+qqline(wdbc$concave_pts_worst, col="blue")
+
+
+
+par(mfrow=c(1, 1))
+```
+
+```{r echo=FALSE, out.width="90%"}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/qq_concave_iniziali.png")
+#knitr::include_graphics("qq_concave_iniziali.png")
+
+```
+\
+As supposed, the features lack of normality behavior.
+
+For this reason, before proceeding with the analysis, we decided to normalize them using the logarithm function.
+
+```{r include=FALSE}
+# Normalized data
+
+diagnosis <- wdbc_df$diagnosis
+
+wdbc_df$concavity_mean <- wdbc_df$concavity_mean + 1
+wdbc_df$concave_pts_mean <- wdbc_df$concave_pts_mean + 1
+wdbc_df$concavity_SE <- wdbc_df$concavity_SE + 1
+wdbc_df$concave_pts_SE <- wdbc_df$concave_pts_SE + 1
+wdbc_df$concavity_worst <- wdbc_df$concavity_worst + 1
+wdbc_df$concave_pts_worst <- wdbc_df$concave_pts_worst + 1
+
+wdbc_df <- log(wdbc_df[-1])
+
+wdbc_df <- cbind(diagnosis, wdbc_df)
+```
+
+```{r include=FALSE}
+
+B <- wdbc_df$diagnosis == "B"
+M <- wdbc_df$diagnosis == "M"
+
+wdbc_B <- wdbc_df[B, ]
+wdbc_M <- wdbc_df[M, ]
+attach(wdbc_df)
+```
+
+Here are some example of feature where can be seen how the normalization impacted on the data:
+```{r eval=FALSE}
+par(mfrow=c(2, 1))
+
+#before
+qqnorm(wdbc$radius_mean,main="Q_Q plt Radius_mean Before")
+qqline(wdbc$radius_mean, col="blue")
+#after
+qqnorm(wdbc_df$radius_mean,main="Q_Q plt Radius_mean After")
+qqline(wdbc_df$radius_mean, col="blue")
+```
+
+```{r echo=FALSE, out.width="90%"}
+
+#knitr::include_graphics("qq_radius_ba.png")
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/qq_radius_ba.png")
+
+```
+
+
+```{r eval=FALSE}
+#before
+
+qqnorm(wdbc$radius_SE,main="Q_Q plt Radius_SE Before")
+qqline(wdbc$radius_SE, col="blue")
+#after
+qqnorm(wdbc_df$radius_SE,main="Q_Q plt Radius_SE After")
+qqline(wdbc_df$radius_SE, col="blue")
+```
+```{r echo=FALSE, out.width="90%"}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/qq_se_ba.png")
+#knitr::include_graphics("qq_se_ba.png")
+
+```
+
+```{r eval=FALSE}
+#before
+qqnorm(wdbc$radius_worst,main="Q_Q plt Radius_worst Before")
+qqline(wdbc$radius_worst, col="blue")
+#after
+qqnorm(wdbc_df$radius_worst,main="Q_Q plt Radius_worst After")
+qqline(wdbc_df$radius_worst, col="blue")
+```
+
+```{r echo=FALSE, out.width="90%"}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/qq_worst_ba.png")
+#knitr::include_graphics("qq_worst_ba.png")
+
+```
+
+\newpage
+
+## Boxplot
+At this point we plotted again all the data.
+
+```{r echo=TRUE, fig.align='center', out.height="75%", out.width="75%"}
+# boxplot dei dati normalizzati
+
+
+##### BOX PLOT #####
+par(mfrow=c(1, 3))
+# Radius
+boxplot(radius_mean,
+        xlab = "radius_mean",
+        main = "")
+boxplot(radius_SE,
+        xlab = "radius_SE",
+        main = "Radius")
+boxplot( radius_worst,
+        xlab = "radius_worst",
+        main = "")
+```
+```{r echo=TRUE, out.height="75%", out.width="75%", fig.align='center'}
+par(mfrow=c(1, 3))
+# Texture
+boxplot(texture_mean,
+        xlab = "texture_mean",
+        main = "")
+boxplot(texture_SE,
+        xlab = "texture_SE",
+        main = "Texture")
+boxplot(texture_worst,
+        xlab = "texture_worst",
+        main = "")
+```
+```{r echo=TRUE, out.height="75%", out.width="75%", fig.align='center'}
+par(mfrow=c(1, 3))
+# Perimeter
+boxplot(perimeter_mean,
+        xlab = "perimeter_mean",
+        main = "")
+boxplot( perimeter_SE, 
+        xlab = "perimeter_SE",
+        main = "Perimeter")
+boxplot( perimeter_worst,
+        xlab = "perimeter_worst",
+        main = "")
+```
+```{r echo=TRUE, out.height="75%", out.width="75%", fig.align='center'}
+par(mfrow=c(1, 3))
+# Area
+boxplot( area_mean,
+        xlab = "area_mean",
+        main = "")
+boxplot( area_SE,
+        xlab = "area_SE",
+        main = "Area")
+boxplot(area_worst,
+        xlab = "area_worst",
+        main = "")
+```
+```{r echo=TRUE, out.height="75%", out.width="75%", fig.align='center'}
+par(mfrow=c(1, 3))
+# Smoothness
+boxplot(smoothness_mean, 
+        xlab = "smoothness_mean",
+        main = "")
+boxplot(smoothness_SE, 
+        xlab = "smoothness_SE",
+        main = "Smoothness")
+boxplot(smoothness_worst,
+        xlab = "smoothness_worst",
+        main = "")
+```
+```{r echo=TRUE, out.height="75%", out.width="75%", fig.align='center'}
+par(mfrow=c(1, 3))
+# Compactness
+boxplot(compactness_mean,
+        xlab = "compactness_mean",
+        main = "")
+boxplot( compactness_SE, 
+        xlab = "compactness_SE",
+        main = "Compactness")
+boxplot( compactness_worst,
+        xlab = "compactness_worst",
+        main = "")
+```
+```{r echo=TRUE, out.height="75%", out.width="75%", fig.align='center'}
+par(mfrow=c(1, 3))
+# Concavity
+boxplot(concavity_mean,
+        xlab = "concavity_mean",
+        main = "")
+boxplot( concavity_SE, 
+        xlab = "concavity_SE",
+        main = "Concavity")
+boxplot(concavity_worst,
+        xlab = "concavity_worst",
+        main = "")
+```
+```{r echo=TRUE, out.height="75%", out.width="75%", fig.align='center'}
+par(mfrow=c(1, 3))
+# Concave_pts_mean
+boxplot(concave_pts_mean,
+        xlab = "concave_pts_mean",
+        main = "")
+boxplot(concave_pts_SE, 
+        xlab = "concave_pts_SE",
+        main = "Concave")
+boxplot(concave_pts_worst,
+        xlab = "concave_pts_worst",
+        main = "")
+```
+```{r echo=TRUE, out.height="75%", out.width="75%", fig.align='center'}
+par(mfrow=c(1, 3))
+# compactness_mean
+boxplot(symmetry_mean,
+        xlab = "symmetry_mean",
+        main = "")
+boxplot(symmetry_SE, 
+        xlab = "symmetry_SE",
+        main = "Symmetry")
+boxplot(symmetry_worst,
+        xlab = "symmetry_worst",
+        main = "")
+```
+```{r echo=TRUE, out.height="75%", out.width="75%", fig.align='center'}
+par(mfrow=c(1, 3))
+# Fractal_dim_mean
+boxplot(fractal_dim_mean, 
+        xlab = "fractal_dim_mean",
+        main = "")
+boxplot( fractal_dim_SE,
+        xlab = "fractal_dim_SE",
+        main = "Fractal")
+boxplot( fractal_dim_worst,
+        xlab = "fractal_dim_worst",
+        main = "")
+```
+
+\newpage
+
+## Density plot
+For the density plot, we kept the same scheme to arrange the plots and for each one we plotted the overall density (in blue), the Benign Density (in green) and the Malignant Density (in red), in order to have a complete overview of the situation.
+
+\centering
+**Radius**
+\raggedright
+```{r eval=FALSE}
+plot(density(wdbc_B$radius_mean), col = 2, main ="Density plot", 
+     xlab = "radius mean" ,xlim=c(0,30))
+lines(density(wdbc_M$radius_mean), col = 3)
+lines(density(wdbc$radius_mean), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$radius_SE), col = 2, main ="Density plot", 
+     xlab = "radius SE",xlim=c(0,1.5))
+lines(density(wdbc_M$radius_SE), col = 3)
+lines(density(wdbc$radius_SE), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$radius_worst), col = 2, main ="Density plot", 
+     xlab = "radius worst",xlim=c(0,40))
+lines(density(wdbc_M$radius_worst), col = 3)
+lines(density(wdbc$radius_worst), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+```
+
+```{r echo=FALSE, out.width="75%",fig.align='center'}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/1radius.png")
+#knitr::include_graphics("1radius.png")
+
+```
+\centering
+**Texture**
+\raggedright
+```{r eval=FALSE}
+plot(density(wdbc_B$texture_mean), col = 2, main ="Density plot", 
+     xlab = "Texture mean", ylim = c(0, 0.12))
+lines(density(wdbc_M$texture_mean), col = 3)
+lines(density(wdbc$texture_mean), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$texture_SE), col = 2, main ="Density plot", 
+     xlab = "Texture SE", ylim = c(0, 1.2))
+lines(density(wdbc_M$texture_SE), col = 3)
+lines(density(wdbc$texture_SE), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$texture_worst), col = 2, main ="Density plot", 
+     xlab = "Texture worst", ylim = c(0, 0.12))
+lines(density(wdbc_M$texture_worst), col = 3)
+lines(density(wdbc$texture_worst), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+```
+
+```{r echo=FALSE, out.width="75%",fig.align='center'}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/2texure.png")
+#knitr::include_graphics("2texure.png")
+
+```
+\centering
+**Perimeter**
+\raggedright
+```{r eval=FALSE}
+plot(density(wdbc_B$perimeter_mean), col = 2, main ="Density plot", 
+     xlab = "Perimeter mean",  xlim = c(0, 220) )
+lines(density(wdbc_M$perimeter_mean), col = 3)
+lines(density(wdbc$perimeter_mean), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$perimeter_SE), col = 2, main ="Density plot", 
+     xlab = "Perimeter SE",xlim=c(0,10) )
+lines(density(wdbc_M$perimeter_SE), col = 3)
+lines(density(wdbc$perimeter_SE), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$perimeter_worst), col = 2, main ="Density plot", 
+     xlab = "Perimeter worst", xlim = c(0, 220) )
+lines(density(wdbc_M$perimeter_worst), col = 3)
+lines(density(wdbc$perimeter_worst), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+```
+
+```{r echo=FALSE, out.width="75%",fig.align='center'}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/3perimeter.png")
+#knitr::include_graphics("3perimeter.png")
+```
+\centering
+**Area**
+\raggedright
+```{r eval=FALSE}
+plot(density(wdbc_B$area_mean), col = 2, main ="Density plot", 
+     xlab = "Area mean", xlim = c(0, 3000))
+lines(density(wdbc_M$area_mean), col = 3)
+lines(density(wdbc$area_mean), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$area_SE), col = 2, main ="Density plot", 
+     xlab = "Area SE",  xlim = c(0, 300))
+lines(density(wdbc_M$area_SE), col = 3)
+lines(density(wdbc$area_SE), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$area_worst), col = 2, main ="Density plot", 
+     xlab = "Area worst",  xlim = c(0, 3000))
+lines(density(wdbc_M$area_worst), col = 3)
+lines(density(wdbc$area_worst), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+```
+
+```{r echo=FALSE, out.width="75%",fig.align='center'}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/4area.png")
+#knitr::include_graphics("4area.png")
+
+```
+\centering
+**Smoothness**
+\raggedright
+```{r eval=FALSE}
+plot(density(wdbc_B$smoothness_mean), col = 2, main ="Density plot", 
+     xlab = "Smoothness mean")
+lines(density(wdbc_M$smoothness_mean), col = 3)
+lines(density(wdbc$smoothness_mean), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$smoothness_SE), col = 2, main ="Density plot", 
+     xlab = "Smoothness SE",ylim=c(0,250))
+lines(density(wdbc_M$smoothness_SE), col = 3)
+lines(density(wdbc$smoothness_SE), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$smoothness_worst), col = 2, main ="Density plot", 
+     xlab = "Smoothness worst")
+lines(density(wdbc_M$smoothness_worst), col = 3)
+lines(density(wdbc$smoothness_worst), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+```
+
+```{r echo=FALSE, out.width="75%",fig.align='center'}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/5smooth.png")
+#knitr::include_graphics("5smooth.png")
+```
+\centering
+**Compactness**
+\raggedright
+```{r eval=FALSE}
+plot(density(wdbc_B$compactness_mean), col = 2, main ="Density plot", 
+     xlab = "compactness mean", xlim = c(0, 0.45))
+lines(density(wdbc_M$compactness_mean), col = 3)
+lines(density(wdbc$compactness_mean), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$compactness_SE), col = 2, main ="Density plot", 
+     xlab = "compactness SE",  xlim = c(0, 0.1))
+lines(density(wdbc_M$compactness_SE), col = 3)
+lines(density(wdbc$compactness_SE), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$compactness_worst), col = 2, main ="Density plot", 
+     xlab = "compactness worst",  xlim = c(0, 0.65))
+lines(density(wdbc_M$compactness_worst), col = 3)
+lines(density(wdbc$compactness_worst), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+```
+
+```{r echo=FALSE, out.width="75%",fig.align='center'}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/6compactness.png")
+#knitr::include_graphics("6compactness.png")
+```
+\centering
+**Concavity**
+\raggedright
+```{r eval=FALSE}
+plot(density(wdbc_B$concavity_mean), col = 2, main ="Density plot", 
+     xlab = "Concavity mean")
+lines(density(wdbc_M$concavity_mean), col = 3)
+lines(density(wdbc$concavity_mean), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$concavity_SE), col = 2, main ="Density plot", 
+     xlab = "Concavity SE")
+lines(density(wdbc_M$concavity_SE), col = 3)
+lines(density(wdbc$concavity_SE), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$concavity_worst), col = 2, main ="Density plot",
+     xlab = "Concavity worst")
+lines(density(wdbc_M$concavity_worst), col = 3)
+lines(density(wdbc$concavity_worst), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+```
+
+```{r echo=FALSE, out.width="75%",fig.align='center'}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/7cancavity.png")
+#knitr::include_graphics("7cancavity.png")
+```
+\centering
+**Concave_pts**
+\raggedright
+```{r eval=FALSE}
+plot(density(wdbc_B$concave_pts_mean), col = 2, main ="Density plot", 
+     xlab = "Concave mean",xlim=c(-0.02,0.2))
+lines(density(wdbc_M$concave_pts_mean), col = 3)
+lines(density(wdbc$concave_pts_mean), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$concave_pts_SE), col = 2, main ="Density plot", 
+     xlab = "Concave SE")
+lines(density(wdbc_M$concave_pts_SE), col = 3)
+lines(density(wdbc$concave_pts_SE), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$concave_pts_worst), col = 2, main ="Density plot", 
+     xlab = "Concave worst",xlim=c(-0.02,0.4))
+lines(density(wdbc_M$concave_pts_worst), col = 3)
+lines(density(wdbc$concave_pts_worst), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+```
+
+```{r echo=FALSE, out.width="75%",fig.align='center'}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/8concavepts.png")
+#knitr::include_graphics("8concavepts.png")
+```
+\centering
+**Symmetry**
+\raggedright
+```{r eval=FALSE}
+plot(density(wdbc_B$symmetry_mean), col = 2, main ="Density plot", 
+     xlab = "symmetry mean")
+lines(density(wdbc_M$symmetry_mean), col = 3)
+lines(density(wdbc$symmetry_mean), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$symmetry_SE), col = 2, main ="Density plot", 
+     xlab = "symmetry SE")
+lines(density(wdbc_M$symmetry_SE), col = 3)
+lines(density(wdbc$symmetry_SE), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$symmetry_worst), col = 2, main ="Density plot", 
+     xlab = "symmetry worst")
+lines(density(wdbc_M$symmetry_worst), col = 3)
+lines(density(wdbc$symmetry_worst), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+```
+
+```{r echo=FALSE, out.width="75%",fig.align='center'}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/9symmetry.png")
+#knitr::include_graphics("9symmetry.png")
+```
+\centering
+**Fractal_dim**
+\raggedright
+```{r eval=FALSE}
+plot(density(wdbc_B$fractal_dim_mean), col = 2, main ="Density plot", 
+     xlab = "fractal_dim mean")
+lines(density(wdbc_M$fractal_dim_mean), col = 3)
+lines(density(wdbc$fractal_dim_mean), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$fractal_dim_SE), col = 2, main ="Density plot", 
+     xlab = "fractal_dim SE")
+lines(density(wdbc_M$fractal_dim_SE), col = 3)
+lines(density(wdbc$fractal_dim_SE), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+
+plot(density(wdbc_B$fractal_dim_worst), col = 2, main ="Density plot", 
+     xlab = "fractal_dim worst")
+lines(density(wdbc_M$fractal_dim_worst), col = 3)
+lines(density(wdbc$fractal_dim_worst), col = "blue")
+legend("topright", legend = c("Benign","Malign","Total"), 
+       col = c("green", "red","blue"), lwd = 1)
+```
+
+```{r echo=FALSE, out.width="75%",fig.align='center', }
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/10fractaldim.png")
+#knitr::include_graphics("10fractaldim.png")
+```
+If we look at the density plots, we can notice that the Benign column, in general, doesn't have a clear bell shape, while Malignant has.\
+In general, thanks to the normalization we managed to have a better normally-like distribution instead of the bimodal that we had before.
+
+\newpage
+
+## Pair plots
+To see how the features are related to each other we called the *pairs()* function. For simplicity, we decided to called the function on features belonging to the same group (Mean, SE, Worst).
+
+```{r eval=FALSE}
+pairs(~.,data=wdbc_df[c(1:10)],
+      col = c("green","lightcoral")[group],   # Change color by group
+      pch = c(1, 1)[group],  
+      upper.panel=panel.smooth,
+      main = "Pairs data_Mean")
+```
+
+```{r echo=FALSE, out.width="100%",fig.align='center'}
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/pairs_mean.png")
+#knitr::include_graphics("pairs_mean.png")
+```
+
+```{r eval=FALSE}
+pairs(~.,data=wdbc_df[c(10:20)],
+      col = c("green","lightcoral")[group],   # Change color by group
+      pch = c(1, 1)[group],                            # Change points by group
+      upper.panel=panel.smooth,
+      main = "Pairs data_SE")
+```
+
+```{r echo=FALSE, out.width="100%",fig.align='center'}
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/pairs_se.png")
+#knitr::include_graphics("pairs_se.png")
+```
+
+```{r eval=FALSE}
+pairs(~.,data=wdbc_df[c(20:30)],
+      col = c("green","lightcoral")[group],   # Change color by group
+      pch = c(1, 1)[group],                            # Change points by group
+      upper.panel=panel.smooth,
+      main = "Pairs data_worst")
+```
+
+```{r echo=FALSE, out.width="100%",fig.align='center'}
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/pairs_worst.png")
+#knitr::include_graphics("pairs_worst.png")
+```
+
+```{r echo=FALSE, out.width="100%",fig.align='center'}
+group <- NA
+group[wdbc$diagnosis == 'B'] <- 1
+group[wdbc$diagnosis == 'M'] <- 2
+```
+
+Using the same color scheme as before, we made clear the distinction between Benign and Malignant tumor in the scatter plots.\
+Just looking at these figures it is evident that there are some variables strongly correlated with each other such as *radius_mean/perimeter_mean* or *perimeter_mean/area_mean* and some less correlated such as *smoothness_mean/texture_mean* or *symmetry_worst/area_worst*.
+
+\newpage
+
+## Correlation Matrix
+In order to have numerical values of the covariance between our features we constructed the correlation matrix.
+
+```{r eval=FALSE}
+cor_BM<- cor(wdbc[-c(1,2)])
+#cambio nomi per leggibilita
+colnames(cor_BM) = c( 'radius_mean', 'texture_mean', 'perim_mean', 'area_mean', 
+                      'smoot_mean', 'compact_mean', 'conc_mean', 'conc_pts_mean', 'sym_mean',
+                      'fractal_mean','radius_se', 'texture_se', 'perim_se', 'area_se', 
+                      'smoot_se', 'compact_se', 'conc_se', 'conc_pts_se', 'sym_se',
+                      'fractal_se','radius_wrs', 'texture_wrs', 'perim_wrs', 'area_wrs', 
+                      'smoot_wrs', 'compact_wrs', 'conc_wrs', 'conc_pts_wrs', 'sym_wrs',
+                      'fractal_wrs')      
+rownames(cor_BM)=c( 'radius_mean', 'texture_mean', 'perim_mean', 'area_mean', 
+                    'smoot_mean', 'compact_mean', 'conc_mean', 'conc_pts_mean', 'sym_mean',
+                    'fractal_mean','radius_se', 'texture_se', 'perim_se', 'area_se', 
+                    'smoot_se', 'compact_se', 'conc_se', 'conc_pts_se', 'sym_se',
+                    'fractal_se','radius_wrs', 'texture_wrs', 'perim_wrs', 'area_wrs', 
+                    'smoot_wrs', 'compact_wrs', 'conc_wrs', 'conc_pts_wrs', 'sym_wrs',
+                    'fractal_wrs') 
+
+
+corrplot(cor_BM, method = 'number', diag = FALSE, order = 'hclust', type='lower',
+         addrect = 3, rect.col = 'blue', rect.lwd = 2 )
+```
+
+```{r echo=FALSE, out.width="100%",fig.align='center'}
+
+knitr::include_graphics("/home/alice/Documenti/Statistical_Learning/II Semestre/Progetto/immagini/covariance.png")
+#knitr::include_graphics("covariance.png")
+
+```
+
+As we can see, some of the predicted relationships are confirmed by the presence of numbers ~1 in the matrix.\
+During the analysis we will have to take into account these strong correlations, as we are going to explain in the next section.
+
+\newpage
+
+# Models
+At this  point, after looking at the data, we start doing classification. We took into account different models: logistic regression, k-NN, Bayes Classifier, LDA and QDA. 
+
+To have a better idea of how well each model was doing classification on unseen data, we divided the dataset into two different sets: train and test. The division is done using a different percentage: 80% of data are in the training set, while the 20% are in the test set.\
+We used the training set to train the model, while the test set has been used to do predictions and calculate the important quantities for classifications.\
+For reproducibility purposes, we also set a seed.\
+
+## Logistic Regression as Classification
+The first model we used to do classification is Logistic regression.
+
+At first we created a model using all the features but, as expected, we got warning messages.
+
+```{r echo=TRUE}
+set.seed(161)
+sample <- sample(1:569, size=455, replace= FALSE)
+wdbc_train <- wdbc_df[sample,] #training set
+wdbc_test <- wdbc_df[-sample,] #test set
+
+lr_model_0 <- glm(wdbc_train$diagnosis~ . ,data = wdbc_train, family = binomial)
+```
+
+This is due to the fact that, as said before, in our dataset we have features that are strongly correlated and in a regression problem, strong correlation, can lead to uncertainty in the coefficient estimates.
+
+We decided to apply the Variance Inflation Factor (VIF) to deal with this problem.\
+The VIF is defined as $$\text{VIF}(\hat{\beta_j}) = \frac{1}{1 - R^2_{x_j | x_{-j}}}$$ and, according to the output value, it helps to understand if there is collinearity or not. The value 1 indicates the complete absence of collinearity, while values greater than 10 indicate a problematic collinearity.\
+These are the results obtained using the *vif()* function in R.
+
+```{r vif_0, echo=TRUE}
+vif(lr_model_0)
+```
+
+As we can notice, we have values that are much bigger than 10. We decided to proceed to eliminate, one by one, the feature with the biggest value to see how this would have changed the VIF value of the other features.\
+Sometimes, eliminating the biggest value produced an increasing in the VIF, so in this case we decided to eliminate the second highest value or the one that decreased the value of VIF the most.\
+After few attempts we obtained the following result.
+
+```{r include=FALSE}
+lr_model_18 <-  glm(diagnosis ~ .  -area_worst  -radius_mean - perimeter_mean - perimeter_worst-area_SE - concavity_mean -area_mean
+                    -fractal_dim_worst -compactness_worst -concavity_worst - texture_SE-perimeter_SE - fractal_dim_mean
+                    - concave_pts_SE -    symmetry_worst - compactness_mean -smoothness_worst -compactness_SE ,
+                    data = wdbc_train, family = binomial)
+```
+
+```{r}
+vif(lr_model_18)
+```
+
+The features’ values are smaller than 10.\
+We looked at the summary of the model.
+
+```{r}
+summary(lr_model_18)
+```
+
+Since in many cases, some or many of the variables used in a multiple regression model are irrelevant, in the sense that they are not associated with the response, we decided to use variable selection to reduce our set of variables to a subset containing only relevant features.
+
+To do that, we decided to use backward selection with fixed stopping rule. In our case we decided to set a significance level at 0.05.\
+According to backward selection, we started with all the variables in the model and remove one variable at the time, on the basis of the highest p-value.\
+We repeated these passages for 5 times until we reached the following result:
+
+```{r include=FALSE}
+lr_model_23 <-  glm(diagnosis ~ .  -area_worst  -radius_mean - perimeter_mean - perimeter_worst-area_SE - concavity_mean -area_mean
+                    -fractal_dim_worst -compactness_worst -concavity_worst - texture_SE-perimeter_SE - fractal_dim_mean
+                    - concave_pts_SE -    symmetry_worst - compactness_mean -smoothness_worst -compactness_SE 
+                    -smoothness_SE -concave_pts_mean -symmetry_SE -texture_mean -symmetry_mean ,
+                    data = wdbc_train, family = binomial)
+```
+
+```{r}
+summary(lr_model_23)
+```
+
+At this point we used this model to do prediction on the test set.\
+In the first attempt, we fixed the threshold to 0.5: in this way everything higher than 0.5 is classified as Benign.\
+We obtained the following results:
+
+```{r include=FALSE}
+predictions <- predict(lr_model_23, wdbc_test, type = "response")
+logistic_predictions <- rep("B", length(predictions))
+logistic_predictions[predictions > 0.5] <- "M"
+```
+
+```{r}
+CM <- table(logistic_predictions, wdbc_test$diagnosis)
+CM <- addmargins(CM, margin = c(1, 2))
+CM
+err <- mean(logistic_predictions != wdbc_test$diagnosis)
+err
+precision <- 70/72
+precision
+```
+
+We printed the ROC curve: 
+```{r echo=FALSE, fig.align = 'center', out.width="75%"}
+roc.out23 <- roc(wdbc_test$diagnosis, predictions, levels=c("M", "B"))
+plot(roc.out23, print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
+coords(roc.out23, x = 0.5)
+```
+
+As we can see from the confusion matrix, the model has very high precision and good result in terms of specificity and sensitivity. Also the ROC curve is very close to 1 as desired. 
+
+Since we have some freedom in the choice of the threshold, we used the information provided by the ROC curve to select the best one. 
+
+```{r}
+result <- coords(roc.out23, x = "best")
+result
+```
+As we can notice, the value of threshold returned by the function is slightly different but at the same time the values of specificity and sensitivity don't change, so we can keep our threshold values as the best one.
+
+```{r echo=TRUE, out.height="75%", out.width="75%"}
+wdbc_test$diagnosis <- ifelse(wdbc_test$diagnosis == "B", 1, 0)
+
+plot(wdbc_test$radius_worst, wdbc_test$diagnosis, pch=20,xlab='radius_worst',
+     ylab="Test_diagnosis")
+
+
+# function to compute the inverse of the logit
+inv.logit <- function(beta0, beta1,beta2,beta3,beta4,beta5,beta6,beta7, 
+                      x1,x2,x3,x4,x5,x6,x7) {
+  y <- exp(beta0+beta1*(x1)+beta2*(x2)+beta3*(x3)+beta4*(x4)+beta5*(x5)+beta6*(x6)
+           +beta7*(x7))
+  return(y/(1+y))
+}
+x1 <- seq(-3, -2, length=100)#smoothness_mean 
+x2<- seq(-2.2, 1.1, length=100) # radius_SE 
+x3 <- seq(0, 0.4, length=100) # concavity_SE   
+x4 <- seq(-7.1, -3.52, length=100)#fractal_dim_SE
+x5 <- seq(2, 3.6, length=100)#radius_worst 
+x6 <- seq(2.4,4, length=100)# texture_worst
+x7 <- seq(0, 0.26, length=100)# concave_pts_worst  
+
+beta.hat <- coefficients(lr_model_23)
+beta0.hat <- beta.hat[1]
+beta1.hat <- beta.hat[2]
+beta2.hat <- beta.hat[3]
+beta3.hat <- beta.hat[4]
+beta4.hat <- beta.hat[5]
+beta5.hat <- beta.hat[6]
+beta6.hat <- beta.hat[7]
+beta7.hat <- beta.hat[8]
+
+y <- inv.logit(beta0.hat, beta1.hat, beta2.hat, beta3.hat,beta4.hat,beta5.hat,
+               beta6.hat,beta7.hat, x1,x2,x3,x4,x5,x6,x7)
+lines(x5, y, col="blue", lwd=1.5)
+```
+```{r include=FALSE}
+
+wdbc_test$diagnosis <- ifelse(wdbc_test$diagnosis == 1, "B", "M")
+```
+
+In this plot we can see how the logistic regression manages to correctly classify the target points of the column *area_worst*, took from the test set.  
+
+\newpage
+
+## K-Nearest Neighbors
+The second model we decided to use is K-Nearest Neighbors (KNN).\
+KNN is a model used to resolve classification problems. The idea behind this model is that we choose the k nearest neighbors to the new point and select the label that belongs to the majority of the neighbors.
+
+Since the choice of k is crucial, we decided to test different values and choose the one that produced the best result. The choice was made by calculating the error on the train set and then selecting the k that produced the smallest error. In our case the value of k was 6.\
+
+```{r include=FALSE}
+wdbc_as_matrix_k <- as.matrix(wdbc[-c(1, 2)])
+wdbc_as_matrix_k <- as.matrix(wdbc_as_matrix_k)
+
+# trasformo la matrice in dataframe
+wdbc_df_k <- as.data.frame(wdbc_as_matrix_k)
+
+wdbc_df_k$concavity_mean <- wdbc_df_k$concavity_mean + 1
+wdbc_df_k$concave_pts_mean <- wdbc_df_k$concave_pts_mean + 1
+wdbc_df_k$concavity_SE <- wdbc_df_k$concavity_SE + 1
+wdbc_df_k$concave_pts_SE <- wdbc_df_k$concave_pts_SE + 1
+wdbc_df_k$concavity_worst <- wdbc_df_k$concavity_worst + 1
+wdbc_df_k$concave_pts_worst <- wdbc_df_k$concave_pts_worst + 1
+wdbc_df_k <- log(wdbc_df_k)
+
+wdbc_train_k <- wdbc_df_k[sample,] #training set
+wdbc_test_k <- wdbc_df_k[-sample,] #test set
+```
+
+```{r}
+wdbc_train_vif <- wdbc_train_k[-c(1, 3, 4, 6, 7, 10, 12, 13, 14, 16, 18, 23, 24, 25, 26, 
+                                  27, 28, 30)]
+wdbc_test_vif <- wdbc_test_k[-c(1, 3, 4, 6, 7, 10, 12, 13, 14, 16, 18, 23, 24, 25, 26, 
+                                27, 28, 30)]
+
+kmax <- 50 
+err <- rep(0,kmax)
+for (l in 1:kmax){
+  knn_predictor <- knn(wdbc_train_vif, wdbc_test_vif, wdbc$diagnosis[sample], k=l)
+  err[l] <- mean(knn_predictor != wdbc$diagnosis[-sample])
+}
+k <- which.min(err)
+k
+```
+ 
+In the implemented model we decided not to use all the features but the one remained after the selection done using VIF. In this way, we are removing collinearity that might influence negatively the classifier.\
+
+```{r}
+knn_predictor <- knn(wdbc_train_vif, wdbc_test_vif, wdbc$diagnosis[sample], k)
+err_k <- mean(knn_predictor != wdbc$diagnosis[-sample])
+err_k
+```
+ 
+Also in this case we calculated the confusion matrix.
+ 
+```{r}
+CM <- table(knn_predictor, wdbc$diagnosis[-sample])
+CM <- addmargins(CM, margin = c(1, 2))
+CM
+
+precision <- 68/76
+precision
+
+sensitivity <- 68/71
+sensitivity
+
+specificity <- 35/43
+specificity
+```
+
+If we look at the Confusion Matrix, we immediately notice that the model does some error when classifying the benign tumor.\
+Since we are dealing with tumors, we cannot let the model predict a tumor as benign while it is malignant. So, when we will have to compare all the models, we will have to consider this result.
+
+```{r, out.height="75%", out.width="75%"}
+##### B & M PLOT ####
+
+B <-wdbc_df$diagnosis[-sample] =="B"
+plot(wdbc_df$radius_worst[-sample], wdbc_df$texture_worst[-sample], col =B+2 ,
+     xlab="radius_worst",ylab="texture_worst",main="Example of Before K-NN")  
+legend(20, 0.30, legend=c("Benign", "Malign"),
+       col = c(2,3), pch = 1, cex = 0.8,
+       title = "Data types", text.font=4)
+
+BB <- knn_predictor =="B"
+plot(wdbc_df$radius_worst[-sample], wdbc_df$texture_worst[-sample], 
+     col = BB+2,xlab="radius_worst",ylab="texture_worst",
+     main="Example of 6-NN Classification")  
+legend(20, 0.30, legend=c("Benign", "Malign"),
+       col = c(2,3), pch = 1, cex = 0.8,
+       title = "Data types", text.font=4)
+```
+
+In the first plot, we can see how the values of the feature *radius_mean* are plotted according to their true value.\
+While, in the second plot, we can see how points are classified by the model. It is evident that the model is doing some errors and this confirms the values that we obtain in the confusion matrix.
+
+## Bayes Classifier
+Bayes Classifier is a probabilistic model used for classification problems. It is based on the Bayes Theorem.\
+In practice, we predict the probability of an event to happen given that some events occurred.\
+As before, we build the model using the features coming from the VIF selection.
+```{r}
+bayes_cl <- naiveBayes(diagnosis ~. -area_worst - radius_mean - perimeter_mean - 
+                   perimeter_worst-area_SE - concavity_mean - area_mean - 
+                   fractal_dim_worst - compactness_worst - concavity_worst - 
+                   texture_SE - perimeter_SE - fractal_dim_mean - concave_pts_SE 
+                 - symmetry_worst - compactness_mean - smoothness_worst - compactness_SE,
+                 data = wdbc_train)
+
+# predict
+predictions <- predict(bayes_cl, newdat = wdbc_test)
+
+CM <- table(wdbc_test$diagnosis, predictions)
+CM <- addmargins(CM, margin = c(1, 2))
+CM
+
+precision <- 69/71
+precision
+
+err <- 7 / 114
+err
+
+sensitivity <- 69/72
+sensitivity
+
+specificity <- 40/42
+specificity
+```
+
+## Linear Discriminant Analysis (LDA)
+As a fourth model we used the Linear Discriminant Analysis (LDA) to do prediction.\
+Also in this case we tried the model with the features coming from the selection made with VIF.
+
+```{r}
+lda_model <- lda(diagnosis ~.-area_worst - radius_mean - perimeter_mean - 
+                   perimeter_worst-area_SE - concavity_mean - area_mean - 
+                   fractal_dim_worst - compactness_worst - concavity_worst - 
+                   texture_SE - perimeter_SE - fractal_dim_mean - concave_pts_SE 
+                 - symmetry_worst - compactness_mean - smoothness_worst - compactness_SE,
+                    data = wdbc_train)
+lda_model
+```
+
+```{r echo=TRUE, out.height="75%", out.width="75%", fig.align='center'}
+plot(lda_model)
+```
+```{r echo=TRUE, out.height="75%", out.width="75%", fig.align='center'}
+plot(lda_model, type="density")
+```
+In the first plot we can see that the coefficients of the linear discriminant are distributed using a histogram. The two groups are well separated and overlap just a bit, which is more visible if we look at the second plot.
+
+As before we computed the Confusion Matrix, the error and the value of the precision
+```{r}
+lda_pred<-predict(lda_model,wdbc_test,type = "response")
+
+lda_class <- lda_pred$class
+CM <-table(lda_class, wdbc_test$diagnosis)
+CM <- addmargins(CM, margin = c(1, 2))
+CM
+
+err<-mean(lda_class!=wdbc_test$diagnosis)
+err
+
+precision <- 70/74
+precision
+
+sensitivity <- 70/71
+sensitivity
+
+specificity <- 39/43
+specificity
+```
+
+In this case, we obtain good results in classification and fothe the precision.
+
+\newpage
+
+## Quadratic Discriminant Analysis (QDA)
+The last model we decided to implement is the Quadratic Discriminant Analysis (QDA).\
+As for LDA, we used the features coming from the selection made with VIF.
+
+```{r}
+qda_model <- qda(diagnosis ~.,  data = wdbc_train)
+qda_model
+qda_pred<-predict(qda_model,wdbc_test,type = "response")
+
+qda_class <- qda_pred$class
+CM <- table(qda_class,wdbc_test$diagnosis)
+CM <- addmargins(CM, margin = c(1, 2))
+CM
+
+err<-mean(qda_class!=wdbc_test$diagnosis)
+err
+
+precision <- 68/74
+precision
+
+sensitivity <- 68/71
+sensitivity
+
+specificity <- 37/43
+specificity
+```
+
+As for KNN, also in this case the model is doing some errors when classifying the benign tumor. 
+
+```{r}
+drawparti(wdbc_test$diagnosis, radius_worst, texture_worst, method="qda", xlab = "radius_worst", 
+          ylab = "texture_worst", imageplot = TRUE, col.wrong = "blue", image.colors =
+            c("lightgreen","indianred2"))
+```
+
+\newpage
+
+# Final considerations
+After implementing five models, we had to decide which one was the more accurate.\
+We have to remember that we are dealing with a tumor classification problem, so we want that our model is able to correctly classify all the tumors. We consider the error of the I type as the most serious one, because in this case the model is classifying a tumor as benign while it is malignant.\
+For this reason, we will give priority to the model that maximize the specificity and minimize the overall error.
+
+Let's see all the results we obtained in a table
+
+|             | LOGISTIC REGRESSION | KNN        |   BAYES CLASSIFIER |   LDA      |   QDA      |
+|:-----------:|:-------------------:|:----------:|:------------------:|:----------:|:----------:|
+| ERROR       |   0.02631579        | 0.09649123 | 0.02816901         | 0.04385965 | 0.07894737 |
+| PRECISION   |   0.9722222         | 0.8947368  | 0.971831           | 0.9459459  | 0.9189189  |
+| SENSITIVITY |   0.9859155         | 0.9577465  | 0.9583333          | 0.9859155  | 0.9577465  |
+| SENSIBILITY |   0.9534884         | 0.8139535  | 0.952381           | 0.9069767  | 0.8604651  |
+
+Looking at the value of the error we can see that the two models that have the smallest error are Logistic Regression and Bayes Classifier. This implies that they have also the highest value of precision.\
+As said before, we want that our models are able to correctly classifies the tumors, this implies that we want to have the values of sensitivity and sensibility as closed to one as possible.
+Looking at sensitivity, the two best models are Logistic Regression and LDA, while looking at the sensibility the two best models are Logistic Regression and Bayes Classifier.\
+Since Logistic regression is the model that has all the best values, we can conclude that, in this case, it is the best model that we can use to try to predict the nature of a tumor.
