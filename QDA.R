@@ -10,7 +10,7 @@ library(pROC)
 library(class)
 library(MASS)
 library(car)
-library(tidyverse)
+#library(tidyverse)
 library(ggplot2)
 library(klaR)
 ###############################
@@ -62,7 +62,7 @@ wdbc_train <- wdbc_df[sample,] #trining set
 wdbc_test <- wdbc_df[-sample,] #test set
 
 diagnosis <- wdbc$diagnosis[sample]
-diagnosis
+#diagnosis
 
 ############################################
 
