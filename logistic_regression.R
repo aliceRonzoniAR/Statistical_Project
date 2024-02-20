@@ -36,18 +36,35 @@ wdbc_df$diagnosis[1]
 wdbc_df$diagnosis <- ifelse(wdbc_df$diagnosis == "B", 1, 0)
 wdbc_df$diagnosis[1]
 
+wdbc_df$concavity_mean<-wdbc_df$concavity_mean+1
+wdbc_df$concave_pts_mean<-wdbc_df$concave_pts_mean+1
+wdbc_df$concavity_SE<-wdbc_df$concavity_SE+1
+wdbc_df$concave_pts_SE<-wdbc_df$concave_pts_SE+1
+wdbc_df$concavity_worst<-wdbc_df$concavity_worst+1
+wdbc_df$concave_pts_worst<-wdbc_df$concave_pts_worst+1
+wdbc_df<-log(wdbc_df[-1])
+dignosis<-wdbc_df$diagnosis
+
+
+wdbc_df<-cbind(diagnosis,wdbc_df)
+wdbc_df
+
+
 # Train e Test set
 set.seed(161)
 sample <- sample(1:569, size=455, replace= FALSE)
 wdbc_train <- wdbc_df[sample,] #trining set
 wdbc_test <- wdbc_df[-sample,] #test set
 
+
+
+
 attach(wdbc_df)
 
 
 
 # Summary del model su tutto il dataset
-lr_model_0 <- glm(diagnosis ~ . ,
+lr_model_0 <- glm(diagnosis~ . ,
                   data = wdbc_train, family = binomial)
 summary(lr_model_0)
 
@@ -244,6 +261,8 @@ err
 roc.out23 <- roc(wdbc_test$diagnosis, predictions, levels=c("0", "1"))
 plot(roc.out23, legacy.axes = TRUE)
 plot(roc.out23, print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
+b<-coords(roc.out23, x="best")
+coords(roc.out23, x=0.5)
 ####################
 
 ######################## GRAFICO LOGISTIC ####################################
@@ -263,7 +282,8 @@ plot(a)
 ########################################
 
 #logistic curve con linea a separare i dati 
-plot(wdbc_test$texture_mean, wdbc_test$diagnosis, pch=20)
+plot(wdbc_test$area_mean  , wdbc_test$diagnosis, pch=20,xlab='Texture_mean',ylab="Test_diagnosis")
+
 
 # function to compute the inverse of the logit
 inv.logit <- function(beta0, beta1,beta2,beta3,beta4,beta5,beta6,beta7,beta8, x1,x2,x3,x4,x5,x6,x7,x8) {
@@ -289,17 +309,17 @@ beta6.hat <- beta.hat[7]
 beta7.hat <- beta.hat[8]
 beta8.hat <- beta.hat[9]
 y <- inv.logit(beta0.hat, beta1.hat, beta2.hat, beta3.hat,beta4.hat,beta5.hat,beta6.hat,beta7.hat,beta8.hat, x1,x2,x3,x4,x5,x6,x7,x8)
-lines(x, y, col="blue", lwd=1.5)
+lines(x2, y, col="blue", lwd=1.5)
 ############################################################
 
 
 
 
 
-############ t=0.4
+############ t=0.2
 predictions <- predict(lr_model_23, wdbc_test, type = "response")
 logistic_predictions <- rep(0, length(predictions))
-logistic_predictions[predictions > 0.4] <- 1
+logistic_predictions[predictions > 0.2] <- 1
 CM <- table(logistic_predictions, wdbc_test$diagnosis) 
 # rearrange rows and columns
 CM <- CM[2:1, 2:1]
@@ -316,10 +336,10 @@ plot(roc.out23, print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", yl
 
 
 
-############ t=0.3
+############ t= 0.7649861 
 predictions <- predict(lr_model_23, wdbc_test, type = "response")
 logistic_predictions <- rep(0, length(predictions))
-logistic_predictions[predictions > 0.3] <- 1
+logistic_predictions[predictions >  0.7649861 ] <- 1
 CM <- table(logistic_predictions, wdbc_test$diagnosis) 
 # rearrange rows and columns
 CM <- CM[2:1, 2:1]
@@ -327,10 +347,4 @@ CM <- addmargins(CM, margin = c(1, 2))
 CM
 err<-mean(logistic_predictions!=wdbc_test$diagnosis)
 err
-
-# ROC Curve
-roc.out23 <- roc(wdbc_test$diagnosis, predictions, levels=c("0", "1"))
-plot(roc.out23, legacy.axes = TRUE)
-plot(roc.out23, print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
-####################
 
