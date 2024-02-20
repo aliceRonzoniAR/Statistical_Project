@@ -12,12 +12,10 @@ The data are obtained from a digitized image of a fine needle aspirate (FNA) of 
 
 ## Explanation of the repository
 - Breast_Cancer_Presentation.pptx : power point of the presentation of the project
-- LDA.R : R code for the implementation of the LDA Model
-- QDA.R : R code for the implementation of the QDA Model
+- LDA_log.R : R code for the implementation of the LDA Model
+- QDA_log.R : R code for the implementation of the QDA Model
 - dAddario_Ronzoni.Rmd : markdown file of the final report
-- dAddario_Ronzoni.pdf : PDF file of the final report
+- dAddario_Ronzoni_Breast_Cancer.pdf : PDF file of the final report
 - k_nn.R : code for the implementation of the KNN Model
-- logistic_regression.R : code for the implementation of the Logistic Regression Model
-- nuovo.R :
-- statistical_project3.R :
-- statistical_project.R : 
+- logistic_regression_log.R : code for the implementation of the Logistic Regression Model
+- statistical_project-3.R : code for the data exporation and all the plots
