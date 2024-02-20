@@ -71,7 +71,7 @@ CM <- addmargins(CM, margin = c(1, 2))
 CM
 
 ##### B & M PLOT ####
-## Scelgo due colonne poco  correlate: radius_mean e symmetry_mean di wdbc_df
+## Scelgo due colonne poco correlate: radius_mean e symmetry_mean di wdbc_df
 BB <- knn_predictor =="B"
 plot(wdbc_df$radius_mean[-sample], wdbc_df$symmetry_mean[-sample], col = BB + 2)  
 legend(20, 0.30, legend=c("Benign", "Malign"),
@@ -84,7 +84,7 @@ legend(20, 0.30, legend=c("Benign", "Malign"),
        col = c(2,3), pch = 1, cex = 0.8,
        title = "Data types", text.font=4)
 # Prova 2
-# Faccio lo stesso bel modello di logistic regression su k-nn per vedere se migliora/peggiora la situa
+# Rimuovo le variabili ottenute dopo logistic regression per vedere se migliora/peggiora il modello
 
 wdbc_train_lr <- wdbc_train[-c(25,4,2,14,15,21,24,9,27,19,31,23,7,22,17)]
 wdbc_test_lr <- wdbc_test[-c(25,4,2,14,15,21,24,9,27,19,31,23,7,22,17)]
