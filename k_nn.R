@@ -1,5 +1,5 @@
 #### SET WORKING DIRECTORY #####
-setwd("~/Desktop/STATISTICAL PROJECT/ file divisi")
+setwd("~/Desktop/STATISTICAL PROJECT/file divisi")
 #setwd("~/Documenti/Statistical_Learning/II Semestre/Progetto")
 
 ###############################
@@ -78,7 +78,11 @@ legend(20, 0.30, legend=c("Benign", "Malign"),
        col = c(2,3), pch = 1, cex = 0.8,
        title = "Data types", text.font=4)
 #####################
-
+B <-diagnosis =="B"
+plot(wdbc$radius_mean[-sample], wdbc$symmetry_mean[-sample], col = B+2)  
+legend(20, 0.30, legend=c("Benign", "Malign"),
+       col = c(2,3), pch = 1, cex = 0.8,
+       title = "Data types", text.font=4)
 # Prova 2
 # Faccio lo stesso bel modello di logistic regression su k-nn per vedere se migliora/peggiora la situa
 
