@@ -10,5 +10,14 @@ Given a series of observations made on a group of patients and a series of chara
 The dataset used was created by Dr. William H. Wolberg (General Surgery Dept., University of Wisconsin), Olvi L. Mangasarian (Computer Sciences Dept. University of Wisconsin) and W. Nick Street, (Computer Sciences Dept., University of Wisconsin), who also donated it in 1995. It can be found at the following web page: [uci.edu](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic).\
 The data are obtained from a digitized image of a fine needle aspirate (FNA) of a breast mass.
 
-## Models
-We took into account different models: logistic regression, k-NN, Bayes Classifier, LDA and QDA.
+## Explanation of the repository
+- Breast_Cancer_Presentation.pptx : power point of the presentation of the project
+- LDA.R : R code for the implementation of the LDA Model
+- QDA.R : R code for the implementation of the QDA Model
+- dAddario_Ronzoni.Rmd : markdown file of the final report
+- dAddario_Ronzoni.pdf : PDF file of the final report
+- k_nn.R : code for the implementation of the KNN Model
+- logistic_regression.R : code for the implementation of the Logistic Regression Model
+- nuovo.R :
+- statistical_project3.R :
+- statistical_project.R : 
